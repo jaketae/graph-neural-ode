@@ -66,17 +66,17 @@ class GCN(nn.Module):
         out_feats: int,
         activation: Callable,
         dropout: int,
-        bias=True,
+        bias: bool = True,
     ):
         super().__init__()
         self.layers = nn.ModuleList()
 
-        self.layers.append(GCNLayer(g, in_feats, hidden_feats, activation, dropout))
+        self.layers.append(GCNLayer(g, in_feats, hidden_feats, activation, dropout, bias))
 
         for _ in range(num_layers - 2):
-            self.layers.append(GCNLayer(g, hidden_feats, hidden_feats, activation, dropout))
+            self.layers.append(GCNLayer(g, hidden_feats, hidden_feats, activation, dropout, bias))
 
-        self.layers.append(GCNLayer(g, hidden_feats, out_feats, None, 0.0))
+        self.layers.append(GCNLayer(g, hidden_feats, out_feats, None, 0.0, bias))
 
     def set_graph(self, g):
         for layer in self.layers:

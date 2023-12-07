@@ -1,5 +1,3 @@
-import torch
-
 def set_timestamps(timestamps):
     return [timestamps[i].unique() for i in range(len(timestamps))]
 
