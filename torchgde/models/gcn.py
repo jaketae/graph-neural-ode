@@ -3,12 +3,8 @@ from typing import Callable
 
 import dgl
 import dgl.function as fn
-import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.nn.modules.module import Module
-from torch.nn.parameter import Parameter
+from torch import nn
 
 
 class GCNLayer(nn.Module):
@@ -77,7 +73,7 @@ class GCN(nn.Module):
 
         self.layers.append(GCNLayer(g, in_feats, hidden_feats, activation, dropout))
 
-        for i in range(num_layers - 2):
+        for _ in range(num_layers - 2):
             self.layers.append(GCNLayer(g, hidden_feats, hidden_feats, activation, dropout))
 
         self.layers.append(GCNLayer(g, hidden_feats, out_feats, None, 0.0))
