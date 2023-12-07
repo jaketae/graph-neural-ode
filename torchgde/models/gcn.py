@@ -54,36 +54,3 @@ class GCNLayer(nn.Module):
         if self.activation:
             h = self.activation(h)
         return h
-
-
-class GCN(nn.Module):
-    def __init__(
-        self,
-        num_layers: int,
-        g: dgl.DGLGraph,
-        in_feats: int,
-        hidden_feats: int,
-        out_feats: int,
-        activation: Callable,
-        dropout: int,
-        bias: bool = True,
-    ):
-        super().__init__()
-        self.layers = nn.ModuleList()
-
-        self.layers.append(GCNLayer(g, in_feats, hidden_feats, activation, dropout, bias))
-
-        for _ in range(num_layers - 2):
-            self.layers.append(GCNLayer(g, hidden_feats, hidden_feats, activation, dropout, bias))
-
-        self.layers.append(GCNLayer(g, hidden_feats, out_feats, None, 0.0, bias))
-
-    def set_graph(self, g):
-        for layer in self.layers:
-            layer.g = g
-
-    def forward(self, features):
-        h = features
-        for layer in self.layers:
-            h = layer(h)
-        return h
