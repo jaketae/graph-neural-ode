@@ -24,7 +24,7 @@ def parse_args():
         nargs="?",
         choices=("cora", "citeseer", "pubmed"),
     )
-    parser.add_argument("--repeat", type=int, default=100)
+    parser.add_argument("--repeat", type=int, default=10)
     parser.add_argument("--hidden_channels", type=int, default=64)
     parser.add_argument("--steps", type=int, default=2000)
     parser.add_argument("--dropout", type=float, default=0.9)
@@ -111,21 +111,21 @@ def get_data(args, device):
     else:
         dataset_cls = dgl.data.PubmedGraphDataset
     data = dataset_cls(verbose=False)
-    X = data[0].ndata["feat"].to(device)
-    Y = data[0].ndata["label"].to(device)
-    train_mask = torch.BoolTensor(data[0].ndata["train_mask"])
-    val_mask = torch.BoolTensor(data[0].ndata["val_mask"])
-    test_mask = torch.BoolTensor(data[0].ndata["test_mask"])
+    graph = data[0]
+    X = graph.ndata["feat"].to(device)
+    Y = graph.ndata["label"].to(device)
+    train_mask = graph.ndata["train_mask"]
+    val_mask = graph.ndata["val_mask"]
+    test_mask = graph.ndata["test_mask"]
     num_features = X.shape[1]
     num_classes = data.num_classes
-    g = data[0]
-    g = dgl.add_self_loop(g)
-    degs = g.in_degrees().float()
-    norm = torch.pow(degs, -0.5)
+    graph = dgl.add_self_loop(graph)
+    degrees = graph.in_degrees().float()
+    norm = torch.pow(degrees, -0.5)
     norm[torch.isinf(norm)] = 0
-    g.ndata["norm"] = norm.unsqueeze(1)
-    g = g.to(device)
-    return g, X, Y, train_mask, val_mask, test_mask, num_features, num_classes
+    graph.ndata["norm"] = norm.unsqueeze(1)
+    graph = graph.to(device)
+    return graph, X, Y, train_mask, val_mask, test_mask, num_features, num_classes
 
 
 def main(args):
@@ -135,8 +135,8 @@ def main(args):
     device = torch.device("cuda")
     name = f"{args.dataset}_{args.name}"
     checkpoint_path = os.path.join("output", "checkpoints", f"{name}.pt")
-    g, X, Y, train_mask, val_mask, test_mask, num_feats, n_classes = get_data(args, device)
-    model = build_model(g, args, num_feats, n_classes).to(device)
+    graph, X, Y, train_mask, val_mask, test_mask, num_feats, n_classes = get_data(args, device)
+    model = build_model(graph, args, num_feats, n_classes).to(device)
     lr = 1e-2 if args.dataset == "pubmed" else 1e-3
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
     for i in tqdm(range(args.steps), leave=False):
@@ -152,7 +152,7 @@ def main(args):
         if args.fast:
             t = 1
         elif args.guide:
-            t = 2
+            t *= 2
         loss = t * F.cross_entropy(y_pred[train_mask], Y[train_mask])
         loss.backward()
         optimizer.step()
