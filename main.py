@@ -24,7 +24,7 @@ def parse_args():
         nargs="?",
         choices=("cora", "citeseer", "pubmed"),
     )
-    parser.add_argument("--repeat", type=int, default=10)
+    parser.add_argument("--repeat", type=int, default=100)
     parser.add_argument("--hidden_channels", type=int, default=64)
     parser.add_argument("--steps", type=int, default=2000)
     parser.add_argument("--dropout", type=float, default=0.9)
@@ -46,19 +46,19 @@ def parse_args():
     return args
 
 
-def build_model(g, args, in_features, num_classes):
+def build_model(graph, args, in_features, num_classes):
     dropout = args.dropout
     hidden_channels = args.hidden_channels
     gnn = nn.Sequential(
         GCNLayer(
-            g=g,
+            g=graph,
             in_feats=hidden_channels,
             out_feats=hidden_channels,
             activation=nn.Softplus(),
             dropout=dropout,
         ),
         GCNLayer(
-            g=g,
+            g=graph,
             in_feats=hidden_channels,
             out_feats=hidden_channels,
             activation=None,
@@ -79,14 +79,18 @@ def build_model(g, args, in_features, num_classes):
             super().__init__()
             self.ode = gde
             self.embed = GCNLayer(
-                g=g,
+                g=graph,
                 in_feats=in_features,
                 out_feats=hidden_channels,
                 activation=F.relu,
                 dropout=0.4,
             )
             self.out = GCNLayer(
-                g=g, in_feats=hidden_channels, out_feats=num_classes, activation=None, dropout=0.0
+                g=graph,
+                in_feats=hidden_channels,
+                out_feats=num_classes,
+                activation=None,
+                dropout=0.0,
             )
 
         def forward(self, x: torch.Tensor, t: int = 1):
@@ -101,11 +105,12 @@ def build_model(g, args, in_features, num_classes):
 
 def get_data(args, device):
     if args.dataset == "cora":
-        data = dgl.data.CoraGraphDataset(verbose=False)
+        dataset_cls = dgl.data.CoraGraphDataset
     elif args.dataset == "citeseer":
-        data = dgl.data.CiteseerGraphDataset(verbose=False)
+        dataset_cls = dgl.data.CiteseerGraphDataset
     else:
-        data = dgl.data.PubmedGraphDataset(verbose=False)
+        dataset_cls = dgl.data.PubmedGraphDataset
+    data = dataset_cls(verbose=False)
     X = data[0].ndata["feat"].to(device)
     Y = data[0].ndata["label"].to(device)
     train_mask = torch.BoolTensor(data[0].ndata["train_mask"])
@@ -128,7 +133,8 @@ def main(args):
         L.seed_everything(args.seed)
     best_val = 0
     device = torch.device("cuda")
-    checkpoint_path = os.path.join("checkpoints", f"{args.name}.pt")
+    name = f"{args.dataset}_{args.name}"
+    checkpoint_path = os.path.join("output", "checkpoints", f"{name}.pt")
     g, X, Y, train_mask, val_mask, test_mask, num_feats, n_classes = get_data(args, device)
     model = build_model(g, args, num_feats, n_classes).to(device)
     lr = 1e-2 if args.dataset == "pubmed" else 1e-3
@@ -145,6 +151,8 @@ def main(args):
         y_pred = outputs
         if args.fast:
             t = 1
+        elif args.guide:
+            t = 2
         loss = t * F.cross_entropy(y_pred[train_mask], Y[train_mask])
         loss.backward()
         optimizer.step()
