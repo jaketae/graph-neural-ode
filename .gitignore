@@ -1,6 +1,7 @@
 # custom
 ziva.venv
 output
+test
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
