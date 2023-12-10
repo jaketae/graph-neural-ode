@@ -24,7 +24,7 @@ def parse_args():
         nargs="?",
         choices=("cora", "citeseer", "pubmed"),
     )
-    parser.add_argument("--repeat", type=int, default=10)
+    parser.add_argument("--repeat", type=int, default=100)
     parser.add_argument("--hidden_channels", type=int, default=64)
     parser.add_argument("--steps", type=int, default=2000)
     parser.add_argument("--dropout", type=float, default=0.9)

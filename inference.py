@@ -1,7 +1,6 @@
 import os
 
 import torch
-from tqdm import tqdm
 
 from main import build_model, get_data, parse_args
 from torchgde import accuracy
@@ -16,11 +15,11 @@ def main(args):
     model = build_model(graph, args, num_feats, n_classes).to(device)
     model.load_state_dict(torch.load(checkpoint_path))
     model.eval()
-    for t in tqdm(torch.linspace(0.1, 1, 10)):
+    for t in torch.linspace(0.1, 1, 10):
         model.ode.odefunc.nfe = 0
         y_pred = model(X, t)
         test_acc = accuracy(y_pred[test_mask], Y[test_mask]).item()
-        print(t.item(), test_acc)
+        print(f"({t.item()}, {test_acc})")
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ class GCNLayer(nn.Module):
         in_feats: int,
         out_feats: int,
         activation: Callable[[torch.Tensor], torch.Tensor],
-        dropout: int,
+        dropout: float,
         bias: bool = True,
     ):
         super().__init__()
